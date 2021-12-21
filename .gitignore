@@ -1,0 +1,13 @@
+node_modules
+
+.DS_Store
+Thumbs.db
+
+.idea
+.vscode
+
+dist
+
+public/libs
+public/assets
+public/*.js
