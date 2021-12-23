@@ -19,6 +19,8 @@ const NODE_PORITIONS = [
     [0.25, 0, 0.25]
 ]
 
+const DEFAULT_GEOMETRY = new BufferGeometry()
+
 export class MapNode extends Mesh {
     public parentNode: MapNode
     public mapView: MapView
@@ -32,9 +34,11 @@ export class MapNode extends Mesh {
     public subdivided: boolean = false
 
     public children: MapNode[] = []
-    public geometry: BufferGeometry
+    public geometry: BufferGeometry = DEFAULT_GEOMETRY
     public material: Material
     public texture: Texture
+
+    public camera?: MapCamera
     
     // public obb: OBB = new OBB()
 
@@ -54,16 +58,19 @@ export class MapNode extends Mesh {
         this.nodeId = level + '-' + x + '-' + y
         this.matrixAutoUpdate = false
         this.userData.isMapNode = true
+        this.geometry.computeBoundingBox()
 
-        this.initialize()
+        // this.initialize()
     }
 
     public initialize(): void {}
 
     public subdivide(): void {
-        const { mapView, children, level, isMesh } = this
+        const { mapView, children, level, isMesh, camera } = this
 
-        if (!isMesh || children.length || level >= mapView.provider.maxLevel) {
+        const { maxLevel } = mapView.provider
+
+        if (!isMesh || children.length || level >= maxLevel) {
             return
         }
         // create children nodes
@@ -86,36 +93,47 @@ export class MapNode extends Mesh {
             }
         }
         this.subdivided = true
+        // 优先细分距离较近的且在视野内的
+        const orders = this.children.sort((a, b) => {
+            const distanceA = MapNode.getDistance(camera, a, a.level, maxLevel)
+            const distanceB = MapNode.getDistance(camera, b, b.level, maxLevel)
+
+            const boxA = a.geometry.boundingBox.clone()
+            boxA.applyMatrix4(this.matrixWorld)
+            if (!this.camera.frustum.intersectsBox(boxA)) return 1
+
+            const boxB = b.geometry.boundingBox.clone()
+            boxB.applyMatrix4(this.matrixWorld)
+            if (!this.camera.frustum.intersectsBox(boxB)) return 1
+            
+            return distanceA - distanceB
+        })
+        orders.forEach(node => node.initialize())
     }
 
     public simplify(): void {
-        this.subdivided = false
         this.children.forEach(child => {
             this.remove(child)
             child.dispose()
         })
-        this.loadedChilds = 0
-        this.isMesh = true
         this.children = []
+        this.loadedChilds = 0
+        this.subdivided = false
+        this.isMesh = true
     }
 
     public updateFromCamera(camera: MapCamera): void {
+        this.camera = camera
         const { frustum } = camera
         const { level, mapView, geometry, isMesh } = this
-        const position = this.getWorldPosition(NODE_POSITION)
-        
-        let distance = camera.position.distanceTo(position)
-        distance /= Math.pow(2, mapView.provider.maxLevel - level)
+
+        const distance = MapNode.getDistance(camera, this, level, mapView.provider.maxLevel)
 
         const isInFrustum = geometry.boundingBox && frustum.intersectsBox(geometry.boundingBox)
-        // const isInFrustum = frustum.intersectsObject(this)
-        // this.isInView = isInFrustum
-
-        // this.visible = distance < 1000
         
-        if (distance < 120) {
+        if (distance < 110) {
             if (isInFrustum) this.subdivide()
-        } else {
+        } else if (distance > 130) {
             this.simplify()
         }
         this.children.forEach(child => (child as MapNode).updateFromCamera(camera))
@@ -130,7 +148,7 @@ export class MapNode extends Mesh {
         if (!parentNode) return
 
         parentNode.loadedChilds += 1
-        if (parentNode.loadedChilds < 4) return
+        if (parentNode.loadedChilds !== 4) return
 
         parentNode.isMesh = false
         parentNode.children.forEach(child => child.visible = true)
@@ -143,9 +161,16 @@ export class MapNode extends Mesh {
         
         // console.log('dispose')
         children.forEach(child => child.dispose())
-        geometry && geometry.dispose()
+        geometry !== DEFAULT_GEOMETRY && geometry.dispose()
         material && material.dispose()
         texture && texture.dispose()
         this.subdivided = false
+    }
+
+    public static getDistance(camera: Camera, mapNode: MapNode, level: number, maxLevel: number) {
+        const position = mapNode.getWorldPosition(NODE_POSITION)
+        let distance = camera.position.distanceTo(position)
+        distance /= Math.pow(2, maxLevel - level)
+        return distance
     }
 }

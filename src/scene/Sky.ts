@@ -1,12 +1,14 @@
 import { MathUtils, Vector3 } from 'three'
 import { Sky as SkyEffect } from 'three/examples/jsm/objects/Sky';
+import { EARTH_PERIMETER } from '../utils/unit'
 
 export class Sky extends SkyEffect{
     sun = new Vector3()
-    private isNight = true
+    private isNight = false
     constructor() {
         super()
-        this.scale.setScalar(1000000000)
+        this.scale.setScalar(EARTH_PERIMETER)
+        // this.scale.copy(new Vector3(EARTH_PERIMETER, 1, EARTH_PERIMETER))
         this.update()
     }
 

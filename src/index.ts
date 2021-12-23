@@ -1,10 +1,12 @@
-import { AmbientLight, BoxBufferGeometry, Fog, LinearFilter, Mesh, MeshBasicMaterial, MeshNormalMaterial, NearestFilter, PerspectiveCamera, Scene, SphereGeometry, UnsignedByteType, WebGLRenderer } from 'three'
+import { AmbientLight, BoxBufferGeometry, Color, Fog, FogExp2, LinearFilter, Mesh, MeshBasicMaterial, MeshNormalMaterial, NearestFilter, PerspectiveCamera, Scene, SphereGeometry, UnsignedByteType, WebGLRenderer } from 'three'
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
 import { MapView } from './map/MapView'
 import { MapCamera } from './map/MapCamera'
 import { HDRCubeTextureLoader } from 'three/examples/jsm/loaders/HDRCubeTextureLoader'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { RendererStats } from './libs/threex.rendererstats'
+import { Sky } from './scene/Sky'
+import { MapHeightNode } from './map/nodes/MapHeightNode'
 
 
 const scene = new Scene()
@@ -16,8 +18,11 @@ const renderer = new WebGLRenderer({
 const controls = new MapControls(camera, renderer.domElement)
 const stats = new (Stats as any)()
 const rendererStats = new (RendererStats as any)()
+const sky = new Sky()
+scene.add(sky)
 
-const fog = new Fog(0x529fff, 0, 1e8)
+// const fog = new FogExp2(0xadcbff, 0.0000001)
+const fog = new Fog(0xdfffff, 0, 1e8)
 scene.fog = fog
 
 renderer.sortObjects = false
@@ -64,15 +69,15 @@ scene.add(cube)
 
 
 // init skybox
-const hdrUrls = [ 'cc_c00.hdr', 'cc_c01.hdr', 'cc_c02.hdr', 'cc_c03.hdr', 'cc_c04.hdr', 'cc_c05.hdr' ]
-const hdrCubeMap = new HDRCubeTextureLoader()
-    .setPath('/assets/sky/')
-    .setDataType(UnsignedByteType)
-    .load(hdrUrls, () => {
-        hdrCubeMap.magFilter = NearestFilter
-        hdrCubeMap.needsUpdate = true
-    })
-scene.background = hdrCubeMap
+// const hdrUrls = [ 'cc_c00.hdr', 'cc_c01.hdr', 'cc_c02.hdr', 'cc_c03.hdr', 'cc_c04.hdr', 'cc_c05.hdr' ]
+// const hdrCubeMap = new HDRCubeTextureLoader()
+//     .setPath('/assets/sky/')
+//     .setDataType(UnsignedByteType)
+//     .load(hdrUrls, () => {
+//         hdrCubeMap.magFilter = NearestFilter
+//         hdrCubeMap.needsUpdate = true
+//     })
+// scene.background = new Color(0xadcbff)
 
 
 // init mapbox
@@ -85,7 +90,8 @@ controls.addEventListener('change', () => {
     camera.far = controls.getDistance() * 40
     camera.updateProjectionMatrix()
     camera.update()
-    fog.far = camera.far
+    // console.log('controls.center:', controls.center)
+    // fog.far = camera.far
 })
 
 window.addEventListener('resize', () => {
@@ -96,7 +102,7 @@ window.addEventListener('resize', () => {
     renderer.setPixelRatio(devicePixelRatio)
 })
 
-console.log('mapView:', mapView)
+// console.log('mapView:', mapView)
 
 
 
@@ -108,6 +114,10 @@ function animate() {
         mapView.update(camera)
         i = 0
     }
+    // fog.density = 0.03 / camera.position.y
+    let far = camera.position.y * 50
+    // console.log('far:', far)
+    fog.far = far < 100000 ? 100000 : far
     renderer.render(scene, camera)
     // renderer2.render(scene, camera2)
     stats.update()
