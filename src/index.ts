@@ -61,11 +61,11 @@ scene.add(ambientLight)
 // document.body.appendChild(renderer2.domElement)
 // renderer2.setSize(400, 400)
 
-const geometry = new BoxBufferGeometry(100000, 1000000, 100000, 1, 1, 1)
-const material = new MeshBasicMaterial({ color: 0xffff00 })
-const cube = new Mesh(geometry, material)
-cube.position.set(-20037508.342789244, 500000, -20037508.342789244)
-scene.add(cube)
+// const geometry = new BoxBufferGeometry(100000, 1000000, 100000, 1, 1, 1)
+// const material = new MeshBasicMaterial({ color: 0xffff00 })
+// const cube = new Mesh(geometry, material)
+// cube.position.set(-20037508.342789244, 500000, -20037508.342789244)
+// scene.add(cube)
 
 
 // init skybox
@@ -110,7 +110,7 @@ let i = 0
 function animate() {
     requestAnimationFrame(animate)
     controls.update()
-    if (i === 10) {
+    if (i === 30) {
         mapView.update(camera)
         i = 0
     }

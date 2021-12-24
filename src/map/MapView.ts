@@ -27,10 +27,10 @@ export class MapView extends Object3D {
         const scale = new Vector3(EARTH_PERIMETER, 1, EARTH_PERIMETER)
         this.scale.copy(scale)
         
-        this.provider = new MapboxProvider('mapbox.satellite', 'jpg70', this)
-        // this.provider = new LocalProvider(0, this)
-        this.heightProvider = new MapboxProvider('mapbox.terrain-rgb', 'pngraw', this)
-        // this.heightProvider = new LocalProvider(1, this)
+        // this.provider = new MapboxProvider('mapbox.satellite', 'jpg70', this)
+        this.provider = new LocalProvider(0, this)
+        // this.heightProvider = new MapboxProvider('mapbox.terrain-rgb', 'pngraw', this)
+        this.heightProvider = new LocalProvider(1, this)
     }
 
     onReady() {

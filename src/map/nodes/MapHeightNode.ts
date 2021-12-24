@@ -1,4 +1,4 @@
-import { BufferGeometry, Float32BufferAttribute, Matrix4, MeshBasicMaterial, MeshNormalMaterial, PlaneBufferGeometry, RGBFormat, Texture, Uint32BufferAttribute } from 'three'
+import { BufferGeometry, Float32BufferAttribute, Matrix4, MeshBasicMaterial, MeshNormalMaterial, NearestFilter, PlaneBufferGeometry, RGBFormat, Texture, Uint32BufferAttribute } from 'three'
 import { AbortableFetch } from '../../utils/fetch'
 import { getCanvas } from '../../utils/image'
 import { MapView } from '../MapView'
@@ -18,10 +18,11 @@ const BOUNDS = [-0.5, -0.5, 0.5, 0.5]
 
 interface WorkerData {
     nodeId: string,
-    vertices: Uint16Array,
-    triangles: Uint32Array,
-    position: { value: Float32Array, size: number },
-    uv: { value: Float32Array, size: number },
+    error?: boolean,
+    vertices?: Uint16Array,
+    triangles?: Uint32Array,
+    position?: { value: Float32Array, size: number },
+    uv?: { value: Float32Array, size: number },
     // index: Uint32BufferAttribute,
     // position: Float32BufferAttribute,
     // uv: Float32BufferAttribute
@@ -36,9 +37,10 @@ export class MapHeightNode extends MapNode {
     public static maxWorker = 3
     public static workerIndex = 0
 
-    public geometryState: number = 0 // 0: nothing, 1: 加载完成， 2: 加载并解析完成.
-    public textureState: number = 0 // 0: nothing, 1: 加载完成， 2: 加载并解析完成.
-    public requests: AbortableFetch[] = []
+    private geometryState: number = 0 // 0: nothing, 1: 加载完成， 2: 加载并解析完成.
+    private textureState: number = 0 // 0: nothing, 1: 加载完成， 2: 加载并解析完成.
+    private requests: AbortableFetch[] = []
+    private worker: Worker
 
     constructor(parentNode: MapNode = null, mapView: MapView = null, location = -1, level = 0, x = 0, y = 0) {
         super(parentNode, mapView, location, level, x, y)
@@ -53,48 +55,40 @@ export class MapHeightNode extends MapNode {
     public async loadHeightGeometry() {
         const { mapView, level, x, y, nodeId } = this
 
-        const request = mapView.heightProvider.fetchTile(level, x, y)
-        this.requests.push(request)
+        const imgUrl = mapView.heightProvider.getUrl(level, x, y)
+        const worker = MapHeightNode.getWorker()
+        const onMessage = (e: MessageEvent<WorkerData>) => {
+            if (e.data.nodeId === this.nodeId) {
 
-        const res = await request.ready()
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const img = document.createElement('img')
-        img.onerror = () => {
-            console.log('load height error:', nodeId)
-            this.geometry = PLANE_GEOMETRY.clone()
-            this.geometryState = 2
-            this.onComplate()
-        }
-        img.onload = async () => {
-            this.geometryState = 1
-            const worker = MapHeightNode.getWorker()
-
-            const onMessage = (e: MessageEvent<WorkerData>) => {
-                if (e.data.nodeId === this.nodeId) {
-                    worker.removeEventListener('message', onMessage)
-
-                    const { triangles, position, uv } = e.data
-                    const geometry = new BufferGeometry()
-                    geometry.setIndex(new Uint32BufferAttribute(triangles, 1))
-                    geometry.setAttribute('position', new Float32BufferAttribute(position.value, position.size))
-                    geometry.setAttribute('uv', new Float32BufferAttribute(uv.value, uv.size))
-                    geometry.rotateX(Math.PI)
-                    // geometry.computeVertexNormals()
-                    this.geometry = geometry
+                if (e.data.error) {
+                    this.geometry = PLANE_GEOMETRY.clone()
                     this.geometryState = 2
                     this.onComplate()
+                    return
                 }
+
+                worker.removeEventListener('message', onMessage)
+
+                const { triangles, position, uv } = e.data
+                const geometry = new BufferGeometry()
+                geometry.setIndex(new Uint32BufferAttribute(triangles, 1))
+                geometry.setAttribute('position', new Float32BufferAttribute(position.value, position.size))
+                geometry.setAttribute('uv', new Float32BufferAttribute(uv.value, uv.size))
+                geometry.rotateX(Math.PI)
+                // geometry.computeVertexNormals()
+                this.geometry = geometry
+                this.geometryState = 2
+                this.onComplate()
             }
-            worker.addEventListener('message', onMessage)
-
-            // const maxLevel = mapView.heightProvider.maxLevel
-            // const errorNum = level < 10 ? 100 : (maxLevel - level) / maxLevel * 80
-
-            const bitmap = await createImageBitmap(img, 0, 0, img.width, img.height)
-            worker.postMessage({ nodeId, bitmap, errorNum: 100 }, [bitmap])
         }
-        img.src = url
+        worker.addEventListener('message', onMessage)
+        worker.postMessage({ nodeId, imgUrl, errorNum: 100 })
+        this.worker = worker
+
+        // const maxLevel = mapView.heightProvider.maxLevel
+        // const errorNum = level < 10 ? 100 : (maxLevel - level) / maxLevel * 80
+
+        // const bitmap = await createImageBitmap(img, 0, 0, img.width, img.height)
     }
 
     public async loadTexture() {
@@ -106,14 +100,6 @@ export class MapHeightNode extends MapNode {
         const blob = await res.blob()
         const url = URL.createObjectURL(blob)
         const img = document.createElement('img')
-        img.onerror = () => {
-            console.log('load texture error:', this.nodeId)
-            // const canvas = getCanvas(1, 1)
-            // const cxt = canvas.getContext('2d')
-            // cxt.fillStyle = 'green'
-            // cxt.fillRect(0, 0, 1, 1)
-            // this.texture = new Texture(canvas as HTMLCanvasElement)
-        }
         img.onload = () => {
             this.textureState = 1
             const material = BASIC_MATERIAL.clone()
@@ -135,10 +121,6 @@ export class MapHeightNode extends MapNode {
             } else {
                 texture = new Texture(img as HTMLImageElement)
             }
-            // texture.generateMipmaps = false
-            // texture.format = RGBFormat
-            // texture.magFilter = NearestFilter
-            // texture.minFilter = NearestFilter
             texture.needsUpdate = true
             material.map = texture
             material.needsUpdate = true
@@ -164,7 +146,7 @@ export class MapHeightNode extends MapNode {
         let worker: Worker = workers[MapHeightNode.workerIndex]
         if (!worker) {
             console.log('create new worker.')
-            worker = new Worker('../workers/getHeight.worker.ts')
+            worker = new Worker('../workers/getHeight.worker.ts', { type: 'module' })
             workers.push(worker)
         }
         MapHeightNode.workerIndex++
@@ -172,8 +154,11 @@ export class MapHeightNode extends MapNode {
     }
 
     public dispose(): void {
-        this.requests.forEach(req => req.abort())
+        const { requests, worker, nodeId } = this
+        requests.forEach(req => req.abort())
         this.requests = []
+        
+        if (worker) worker.postMessage({ nodeId, cancel: true })
         super.dispose()
     }
 }

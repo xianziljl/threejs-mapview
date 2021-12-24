@@ -91,6 +91,7 @@ export class MapNode extends Mesh {
                 node.updateMatrix()
                 node.updateMatrixWorld(true)
                 childNodes.push(node)
+                this.add(node)
                 i++
             }
         }
@@ -111,16 +112,16 @@ export class MapNode extends Mesh {
         })
         orders.forEach(node => {
             node.initialize()
-            this.add(node)
         })
         this.subdivided = true
     }
 
     public simplify(): void {
-        this.children.forEach(child => {
-            this.remove(child)
-            child.dispose()
-        })
+        this.children.forEach(child => child.dispose())
+        this.remove(...this.children)
+        // if (this.children.length > 1) {
+        //     console.log(this.children.length)
+        // }
         // this.children = []
         this.readyChilds = 0
         this.subdivided = false
@@ -135,9 +136,6 @@ export class MapNode extends Mesh {
         const distance = MapNode.getDistance(camera, this, level, mapView.provider.maxLevel)
 
         const isInFrustum = geometry.boundingBox && frustum.intersectsBox(geometry.boundingBox)
-
-        // if (isInFrustum) this.onInView()
-        // else this.onOutView()
         
         if (distance < 110) {
             if (isInFrustum && isMesh) this.subdivide()
@@ -145,7 +143,7 @@ export class MapNode extends Mesh {
             this.simplify()
         }
         if (distance <= 130) {
-            this.children.forEach(child => (child as MapNode).updateFromCamera(camera))
+            this.children.forEach(child => child.updateFromCamera(camera))
         }
     }
 
@@ -159,21 +157,12 @@ export class MapNode extends Mesh {
 
         parentNode.readyChilds += 1
 
-        if (parentNode.readyChilds > 4) {
-            console.log(parentNode.readyChilds)
-        }
-
         if (parentNode.readyChilds < 4) return
 
         parentNode.children.forEach(child => child.visible = true)
         parentNode.isMesh = false
-        // parentNode.onReady()
         
     }
-
-    public onInView() {}
-
-    public onOutView() {}
 
     public dispose(): void {
         const { children, geometry, material, texture } = this

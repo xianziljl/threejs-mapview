@@ -349,20 +349,47 @@ function buildSkirt(width: number = 1.0, height: number = 1.0, widthSegments: nu
         indices.push(d, b, a, d, c, b)
     }
 }
+interface AbortableFetch {
+    abort: Function,
+    ready: () => Promise<Response>
+}
+
+function abortableFetch(url: string, init: RequestInit = {}): AbortableFetch {
+    const controller = new AbortController()
+    const { signal } = controller
+
+    return {
+        abort: () => controller.abort(),
+        ready: () => fetch(url, { ...init, signal })
+    }
+}
 
 interface MessageData {
     nodeId: string
-    bitmap: ImageBitmap,
-    errorNum: number
+    imgUrl?: string,
+    errorNum?: number,
+    cancel?: boolean
 }
 
 const canvas = new OffscreenCanvas(256, 256)
 const cxt = canvas.getContext('2d')
 
-self.onmessage = (e: MessageEvent<MessageData>) => {
+const requests = new Map<string, AbortableFetch>([])
+
+self.onmessage = async (e: MessageEvent<MessageData>) => {
+    const { nodeId, imgUrl, errorNum, cancel } = e.data
     try {
-        const { nodeId, bitmap, errorNum } = e.data
-        // console.log('bitmap in worker', nodeId, bitmap)
+        if (cancel) {
+            const req = requests.get(nodeId)
+            if (req) req.abort()
+            requests.delete(nodeId)
+            return
+        }
+        const request = abortableFetch(imgUrl)
+        requests.set(nodeId, request)
+        const res = await request.ready()
+        const blob = await res.blob()
+        const bitmap = await createImageBitmap(blob)
         cxt.drawImage(bitmap, 0, 0, 256, 256)
         const imgData = cxt.getImageData(0, 0, 256, 256)
         const terrain = imgDataToTerrain(imgData, 256)
@@ -377,7 +404,9 @@ self.onmessage = (e: MessageEvent<MessageData>) => {
         ]
 
         self.postMessage({ nodeId, triangles, position, uv }, null, transferableObjects)
+        requests.delete(nodeId)
     } catch (e) {
-        console.error('worker error:', e)
+        requests.delete(nodeId)
+        self.postMessage({ nodeId, error: true })
     }
 }
