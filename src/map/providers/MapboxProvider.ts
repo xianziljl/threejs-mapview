@@ -1,6 +1,7 @@
 import { MapProvider } from './MapProvider'
 import { loadImage } from '../../utils/image'
 import { ImageLoader, Texture, TextureLoader } from 'three'
+import { MapView } from '../MapView'
 
 const textureLoader = new TextureLoader()
 const imageLoader = new ImageLoader()
@@ -16,16 +17,19 @@ export class MapboxProvider extends MapProvider {
     public apiToken: string = 'pk.eyJ1IjoiZG91YmliaWJpYmkiLCJhIjoiY2tiajQzYWQwMGxidDJycWluemE5bXB3dyJ9.sOQJSMtlL0xP27Dp6fvRyw'
     public mapId: string // mapbox.terrain-rgb mapbox.satellite
     public format: string // png png32 png64 png128 png256 jpg70 jpg80 jpg90 pngraw
-    public onReady: Function
+    public mapView: MapView
     public db: IDBDatabase
 
-    constructor(mapId: string, format: string, onReady?: Function) {
+    constructor(mapId: string, format: string, mapView: MapView) {
         super()
         this.mapId = mapId
         this.format = format
-        this.onReady = onReady
+        this.mapView = mapView
         // console.log('init db:', mapId)
-        this.initDB()
+        // this.initDB()
+        setTimeout(() => {
+            mapView.onReady()
+        }, 10);
     }
 
     public getUrl(level: number, x: number, y: number): string {
@@ -131,7 +135,7 @@ export class MapboxProvider extends MapProvider {
             const db: IDBDatabase = e.target.result
             // init(db)
             this.db = db
-            this.onReady && this.onReady()
+            this.mapView.onReady()
 
         }
         request.addEventListener('upgradeneeded', e => {

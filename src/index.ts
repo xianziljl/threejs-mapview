@@ -12,7 +12,7 @@ import { MapHeightNode } from './map/nodes/MapHeightNode'
 const scene = new Scene()
 const camera = new MapCamera()
 const renderer = new WebGLRenderer({
-    logarithmicDepthBuffer: false,
+    logarithmicDepthBuffer: true, // 场景尺寸比例较大且有面重合的情况下需要打开
     antialias: true
 })
 const controls = new MapControls(camera, renderer.domElement)
@@ -110,7 +110,7 @@ let i = 0
 function animate() {
     requestAnimationFrame(animate)
     controls.update()
-    if (i === 20) {
+    if (i === 10) {
         mapView.update(camera)
         i = 0
     }

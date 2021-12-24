@@ -10,7 +10,7 @@ export abstract class MapProvider {
         return null
     }
 
-    public fetchTile(level: number, x: number, y: number): Promise<any> {
+    public fetchTile(level: number, x: number, y: number): any {
         return null
     }
     public getMetaData(): void {}
