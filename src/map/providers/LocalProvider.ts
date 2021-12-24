@@ -21,23 +21,5 @@ export class LocalProvider extends MapProvider {
         const url = this.getUrl(level, x, y)
 
         return abortableFetch(url)
-        // const url = this.getUrl(level, x, y)
-        // return fetch(url)
-
-        // return new Promise(async (resolve, reject) => {
-        //     try {
-        //         const img = document.createElement('img')
-        //         img.crossOrigin = 'Anymouse'
-        //         img.onload = () => {
-        //             resolve(img)
-        //         }
-        //         img.onerror = () => {
-        //             reject()
-        //         }
-        //         img.src = url
-        //     } catch (e) {
-        //         reject()
-        //     }
-        // })
     }
 }

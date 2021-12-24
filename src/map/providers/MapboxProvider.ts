@@ -2,6 +2,7 @@ import { MapProvider } from './MapProvider'
 import { loadImage } from '../../utils/image'
 import { ImageLoader, Texture, TextureLoader } from 'three'
 import { MapView } from '../MapView'
+import { AbortableFetch, abortableFetch } from '../../utils/fetch'
 
 const textureLoader = new TextureLoader()
 const imageLoader = new ImageLoader()
@@ -36,44 +37,10 @@ export class MapboxProvider extends MapProvider {
         return `https://api.mapbox.com/v4/${this.mapId}/${level}/${x}/${y}.${this.format}?access_token=${this.apiToken}`
     }
 
-    public fetchTile(level: number, x: number, y: number): Promise<HTMLImageElement> {
-        // const id = `${zoom}-${x}-${y}-${this.format}`
-        return new Promise(async (resolve, reject) => {
-            const url = this.getUrl(level, x, y)
+    public fetchTile(level: number, x: number, y: number): AbortableFetch {
+        const url = this.getUrl(level, x, y)
 
-            // const tileId = `${level}_${x}_${y}`
-
-            try {
-                // let blob: Blob
-
-                // const tile = await this.getTileFromeDB(tileId).catch(e => null)
-                // if (tile) {
-                //     blob = tile.blob
-                // } else {
-                //     blob = await this.fetchTileFromServe(url).catch(e => null)
-                //     // if (blob) {
-                //     //     this.addToDB(tileId, blob)
-                //     // }
-                // }
-
-                // if (!blob) {
-                //     return reject()
-                // }
-
-                // const _url = URL.createObjectURL(blob)
-                const img = document.createElement('img')
-                img.crossOrigin = 'Anymouse'
-                img.onload = () => {
-                    resolve(img)
-                }
-                img.onerror = () => {
-                    reject()
-                }
-                img.src = url
-            } catch (e) {
-                reject()
-            }
-        })
+        return abortableFetch(url)
     }
 
     public async fetchTileFromServe(url: string): Promise<Blob> {

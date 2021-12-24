@@ -1,7 +1,7 @@
-# Highway-visualization
+# THREEJS MAPVIEW
 
 ## Get Started
-1. Download [three.js](https://codeload.github.com/mrdoob/three.js/zip/refs/heads/master) and unzip to `public` folder.
-2. Make sure that the constant `THREE` in `rollup.config.dev.js` and the `threejs` folder under `public` have the same name.
-3. Run `pnpm install` (or `yarn`).
-4. Run `pnpm dev` (or `yarn dev`).
+1. 下载 [three.js](https://codeload.github.com/mrdoob/three.js/zip/refs/heads/master) 并解压到 public 目录.
+2. 将解压的 threejs 目录重命名为 three.
+3. 执行 `pnpm install` (或 `yarn`).
+4. 执行 `pnpm dev` (或 `yarn dev`).

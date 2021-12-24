@@ -1,7 +1,7 @@
 {
-  "name": "highway-visualization",
+  "name": "threejs-mapview",
   "version": "0.0.0",
-  "description": "highway 3d visualization",
+  "description": "Threejs mapview.",
   "main": "index.js",
   "scripts": {
     "dev": "rollup -c rollup.dev.js --watch",

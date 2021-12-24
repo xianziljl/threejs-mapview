@@ -9,10 +9,8 @@ import { MapHeightNode } from './nodes/MapHeightNode'
 import { LocalProvider } from './providers/LocalProvider'
 
 export class MapView extends Object3D {
-    // provider: MapProvider = new DebugProvider()
-    provider: LocalProvider = null
-    heightProvider: LocalProvider = null
-    // provider: MapProvider = new MapboxProvider('mapbox.terrain-rgb', 'pngraw')
+    provider: MapProvider = null
+    heightProvider: MapProvider = null
     root: MapNode
     readyState: number = 0
     
@@ -28,8 +26,11 @@ export class MapView extends Object3D {
         
         const scale = new Vector3(EARTH_PERIMETER, 1, EARTH_PERIMETER)
         this.scale.copy(scale)
-        this.provider = new LocalProvider(0, this)
-        this.heightProvider = new LocalProvider(1, this)
+        
+        this.provider = new MapboxProvider('mapbox.satellite', 'jpg70', this)
+        // this.provider = new LocalProvider(0, this)
+        this.heightProvider = new MapboxProvider('mapbox.terrain-rgb', 'pngraw', this)
+        // this.heightProvider = new LocalProvider(1, this)
     }
 
     onReady() {
